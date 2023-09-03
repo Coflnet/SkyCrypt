@@ -149,7 +149,7 @@ await apiv2Route.init();
 await apiRoute.init();
 
 const app = express();
-const port = process.env.SKYCRYPT_PORT ?? 32464;
+const port = 32464;
 
 let sitemap;
 

@@ -43,14 +43,14 @@ function writeFile(newValue) {
 let hasBeenModified = false;
 
 /** @type {Credentials} */
-const credentials = readFile() ?? {};
+const credentials = {};
+credentials.hypixel_api_key = process.env.HYPIXEL_API_KEY;
+credentials.dbUrl = process.env.DB_URL;
+credentials.dbName = process.env.DB_NAME || "sbstats";
+credentials.redisUrl = process.env.REDIS_URL;
+credentials.session_secret = process.env.SESSION_SECRET;
 
-for (const key in defaultCredentials) {
-  if (credentials[key] == undefined) {
-    credentials[key] = defaultCredentials[key];
-    hasBeenModified = true;
-  }
-}
+console.log("credentials", credentials);
 
 if (hasBeenModified) {
   writeFile(credentials);
