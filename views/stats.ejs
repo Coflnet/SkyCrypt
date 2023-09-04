@@ -62,7 +62,7 @@ const slayerInfo = {
   }
 };
 
-const seaCreatures = [ 
+const seaCreatures = [
   "pond_squid",
   "plhlegblast",
   "sea_walker",
@@ -109,7 +109,7 @@ const seaCreatures = [
   "yeti",
   "grim_reaper",
   "thunder",
-  "lord_jawbus", 
+  "lord_jawbus",
   "agarimoo"
 ];
 
@@ -734,6 +734,7 @@ const metaDescription = getMetaDescription()
         <% if(calculated.guild.level){ %><span class='stat-name'>Level: </span><span class='stat-value'><%= calculated.guild.level %></span><br><% } %>
         ">Guild: <%= calculated.guild.name %></button><% } %>
         <a href="https://plancke.io/hypixel/player/stats/<%= calculated.display_name %>" target="_blank" rel="noreferrer" class="additional-player-stat external-link">Plancke</a>
+        <a href="https://sky.coflnet.com/player/<%= calculated.display_name %>" target="_blank" rel="noreferrer" class="additional-player-stat external-link">Coflnet</a>
         <div id="additional_socials">
           <button data-copy-text="<%= calculated.uuid %>" class="copy-text additional-player-stat">Copy UUID</button>
           <% if('DISCORD' in calculated.social){ %><button data-copy-text="<%= calculated.social.DISCORD %>" class="additional-player-stat copy-text external-discord external-icon"><%= calculated.social.DISCORD %></button><% } %>
@@ -816,7 +817,7 @@ const metaDescription = getMetaDescription()
             },
           ];
         if (calculated.weight) {
-          for (weight of weightSystems) { 
+          for (weight of weightSystems) {
             // set weight to 0 if skills API is off (due to skill wipes & incorrect calculation)
             if ('runecrafting' in calculated.levels === false) {
               weight.total -= weight.skill;
@@ -1693,7 +1694,7 @@ const metaDescription = getMetaDescription()
               <% }); %>
             </div>
             <% } %>
-             
+
             <% if(farming.talked) { %>
               <% if(Object.keys(calculated.farming.crops).length > 0){ %>
               <button class="stat-sub-header extender" aria-controls="farming-crops" aria-expanded="false">Farming Crops</button>
@@ -2192,7 +2193,7 @@ const metaDescription = getMetaDescription()
             }
           }
 
-          
+
           const slayerNames = Object.keys(calculated.slayers).sort((a, b) => slayerOrder.indexOf(a) - slayerOrder.indexOf(b));
           for (const slayerName of slayerNames){
             const slayer = calculated.slayers[slayerName]
@@ -2210,7 +2211,7 @@ const metaDescription = getMetaDescription()
 
             if (slayerInfo[slayerName] === undefined) {
               continue;
-            } 
+            }
             %>
 
             <div class="narrow-info-container slayer">
@@ -2235,7 +2236,7 @@ const metaDescription = getMetaDescription()
               <% if (slayer.level.unclaimed){ %>
                 <div class="slayer-unclaimed">unclaimed slayer rewards!</div>
               <% } %>
-              
+
               <% max = slayer.level.currentLevel == slayer.level.maxLevel ? 'golden-text' : '' %>
               <span class="<%= max %> stat-name slayer-level">
                 <%= slayerName %> level <span class="stat-value <%= max %>"><%= slayer.level.currentLevel %></span>
@@ -2250,7 +2251,7 @@ const metaDescription = getMetaDescription()
             </div>
             <% } %>
           </div>
-          <% 
+          <%
           const maxSlayerLevel = Math.max(...Object.values(calculated.slayers).map(slayer => slayer.level?.currentLevel ?? 0));
           if (maxSlayerLevel > 0){ %>
             <div data-bonus-stats="slayer_zombie,slayer_spider,slayer_wolf,slayer_enderman"></div>
@@ -2552,7 +2553,7 @@ const metaDescription = getMetaDescription()
                   </div>
                 </div>
               </div>
-            <% } %>   
+            <% } %>
           </div>
         </div>
       <% } %>
@@ -2934,7 +2935,7 @@ const metaDescription = getMetaDescription()
             </div>
             <span>Potions</span>
           </div>
-          <% 
+          <%
               let effects_tooltips = [];
               for (const key of Object.keys(calculated.misc.effects).sort()) {
                 effects_tooltips[key] ??= [];
