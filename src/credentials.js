@@ -43,17 +43,33 @@ function writeFile(newValue) {
 let hasBeenModified = false;
 
 /** @type {Credentials} */
-const credentials = {};
-credentials.hypixel_api_key = process.env.HYPIXEL_API_KEY;
-credentials.dbUrl = process.env.DB_URL;
-credentials.dbName = process.env.DB_NAME || "sbstats";
-credentials.redisUrl = process.env.REDIS_URL;
-credentials.session_secret = process.env.SESSION_SECRET;
+const CREDENTIALS = readFile() ?? {};
 
-console.log("credentials", credentials);
-
-if (hasBeenModified) {
-  writeFile(credentials);
+for (const key in defaultCredentials) {
+  if (CREDENTIALS[key] == undefined) {
+    CREDENTIALS[key] = defaultCredentials[key];
+    hasBeenModified = true;
+  }
 }
 
-export default credentials;
+if (hasBeenModified) {
+  writeFile(CREDENTIALS);
+}
+
+if (process.env.HYPIXEL_API_KEY) {
+  CREDENTIALS.hypixel_api_key = process.env.HYPIXEL_API_KEY;
+}
+
+if (process.env.MONGO_CONNECTION_STRING) {
+  CREDENTIALS.dbUrl = process.env.MONGO_CONNECTION_STRING;
+}
+
+if (process.env.REDIS_CONNECTION_STRING) {
+  CREDENTIALS.redisUrl = process.env.REDIS_CONNECTION_STRING;
+}
+
+if (process.env.DISCORD_WEBHOOK) {
+  CREDENTIALS.discord_webhook = process.env.DISCORD_WEBHOOK;
+}
+
+export default CREDENTIALS;

@@ -85,7 +85,7 @@ export const TROPHY_FISH = {
   },
   OBFUSCATED_FISH_1: {
     display_name: "Obfuscated 1",
-    description: "§7Caught with Corrupted Bait or by using Obfuscated 3 as bait.",
+    description: "§7Caught with Corrupted Bait or dropped from corrupted Sea Creatures.",
     textures: {
       bronze: "e1f4d91e1bf8d3c4258fe0f28ec2fa40670e25ba06ac4b5cb1abf52a83731a9c",
       diamond: "caa0b4b4f443257e83176df4ffd550de7ee89867e506b9c1ca53f33611327929",
@@ -185,21 +185,4 @@ export const TROPHY_FISH = {
   },
 };
 
-export const TROPHY_FISH_STAGES = {
-  1: {
-    formatted: `Bronze Hunter`,
-    type: "bronze",
-  },
-  2: {
-    formatted: `Silver Hunter`,
-    type: "silver",
-  },
-  3: {
-    formatted: `Gold Hunter`,
-    type: "gold",
-  },
-  4: {
-    formatted: `Diamond Hunter`,
-    type: "diamond",
-  },
-};
+export const TROPHY_FISH_STAGES = ["Bronze Hunter", "Silver Hunter", "Gold Hunter", "Diamond Hunter"];

@@ -67,4 +67,9 @@ package-lock.json
 
 # local dev files
 devdata/*
+
 .pnpm-store/v3/files
+
+
+# generated metrics
+public/metrics.json

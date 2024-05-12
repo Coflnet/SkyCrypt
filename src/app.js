@@ -1,6 +1,6 @@
 // this file never runs on the master thread
 import * as lib from "./lib.js";
-import { getFileHashes, getFileHash, hashedDirectories } from "./hashes.js";
+import { getFileHashes, getFileHash, HASHED_DIRECTORIES } from "./hashes.js";
 import fetch from "node-fetch";
 
 import express from "express";
@@ -29,7 +29,6 @@ import * as constants from "./constants.js";
 import * as custom_resources from "./custom-resources.js";
 import { SitemapStream, streamToPromise } from "sitemap";
 import { createGzip } from "zlib";
-import twemoji from "twemoji";
 import cookieParser from "cookie-parser";
 
 import * as apiRoute from "./routes/api.js";
@@ -42,6 +41,7 @@ import * as itemRoute from "./routes/item.js";
 import * as headRoute from "./routes/head.js";
 import * as leatherRoute from "./routes/leather.js";
 import * as potionRoute from "./routes/potion.js";
+import { SkyCryptError } from "./constants/error.js";
 
 const folderPath = helper.getFolderPath();
 
@@ -66,7 +66,7 @@ if (process.env.NODE_ENV == "development") {
 
   watch("public/resources/css", { recursive: true }, async (evt, name) => {
     const [, , directory, fileName] = name.split(/\/|\\/);
-    if (hashedDirectories.includes(directory)) {
+    if (HASHED_DIRECTORIES.includes(directory)) {
       fileHashes[directory][fileName] = await getFileHash(name);
     }
   });
@@ -105,9 +105,9 @@ export const VOLATILE_CACHE_MAX_AGE = 12 * 60 * 60; // 12 hours
 export const CACHE_PATH = helper.getCacheFolderPath(folderPath);
 await fs.ensureDir(CACHE_PATH);
 
-if (credentials.hypixel_api_key.length == 0) {
+if (credentials.hypixel_api_key.length === 0) {
   throw new Error(
-    "Please enter a valid Hypixel API Key. Go to developer.hypixel.net/dashboard and click Create API Key to obtain one."
+    "Please enter a valid Hypixel API Key. Go to developer.hypixel.net/dashboard and click Create API Key to obtain one.",
   );
 }
 
@@ -124,9 +124,9 @@ const hypixelUUID = "f7c77d999f154a66a87dc4a51ef30d19";
 async function updateCacheOnly() {
   try {
     const response = await fetch(
-      `https://api.hypixel.net/skyblock/profiles?uuid=${hypixelUUID}&key=${credentials.hypixel_api_key}`
+      `https://api.hypixel.net/skyblock/profiles?uuid=${hypixelUUID}&key=${credentials.hypixel_api_key}`,
     );
-    //forceCacheOnly = false;
+    forceCacheOnly = false;
     // 429 = key throttle
     if (!response.ok && response.status != 429) {
       forceCacheOnly = true;
@@ -170,7 +170,7 @@ app.use(
     store: MongoStore.create({
       client: mongo,
     }),
-  })
+  }),
 );
 
 function parseFavorites(cookie) {
@@ -218,8 +218,6 @@ async function getFavoritesFormUUIDs(uuids) {
 async function getExtra(page = null, favoriteUUIDs = [], cacheOnly) {
   const output = {};
 
-  output.twemoji = twemoji;
-
   output.packs = custom_resources.getPacks();
 
   output.isFoolsDay = isFoolsDay;
@@ -248,7 +246,7 @@ app.all("/stats/:player/:profile?", async (req, res, next) => {
   const debugId = helper.generateDebugId("stats");
   const timeStarted = Date.now();
 
-  // console.debug(`${debugId}: stats page was called.`);
+  console.debug(`${debugId}: stats page was called.`);
 
   const paramPlayer = req.params.player
     .toLowerCase()
@@ -268,26 +266,34 @@ app.all("/stats/:player/:profile?", async (req, res, next) => {
       debugId,
     });
 
-    const items = await lib.getItems(profile.members[profile.uuid], true, req.cookies.pack, { cacheOnly, debugId });
-    const calculated = await lib.getStats(db, profile, allProfiles, items, { cacheOnly, debugId });
+    const museum = await lib.getMuseum(db, profile, { cacheOnly, debugId });
+    for (const member in museum) {
+      profile.members[member].museum = museum[member];
+    }
+
+    const paramBingo =
+      profile.game_mode === "bingo" ? await lib.getBingoProfile(db, paramPlayer, { cacheOnly, debugId }) : null;
+    const calculated = await lib.getStats(db, profile, paramBingo, allProfiles, req.cookies.pack, {
+      cacheOnly,
+      debugId,
+      updateLeaderboards: true,
+      updateGuild: true,
+      customTextures: true,
+    });
 
     if (isFoolsDay) {
       calculated.skin_data.skinurl =
         "http://textures.minecraft.net/texture/b4bd832813ac38e68648938d7a32f6ba29801aaf317404367f214b78b4d4754c";
     }
 
-    // console.debug(`${debugId}: starting page render.`);
-    // const renderStart = Date.now();
-
-    if (req.cookies.pack) {
-      process.send({ type: "selected_pack", id: req.cookies.pack });
-    }
+    console.debug(`${debugId}: starting page render.`);
+    const renderStart = Date.now();
 
     res.render(
       "stats",
       {
         req,
-        items,
+        items: calculated.items,
         calculated,
         _,
         constants,
@@ -297,16 +303,51 @@ app.all("/stats/:player/:profile?", async (req, res, next) => {
         fileNameMap,
         page: "stats",
       },
-      (err, html) => {
-        if (err) console.error(err);
-        // else console.debug(`${debugId}: page successfully rendered. (${Date.now() - renderStart}ms)`);
+      async (err, html) => {
+        if (err) {
+          console.debug(`${debugId}: an error has occurred.`);
+          console.error(err);
 
+          const username = req.params.player;
+          const profile = req.params.profile;
+          await helper.sendWebhookMessage(err, { username, profile });
+
+          const favorites = parseFavorites(req.cookies.favorite);
+          res.render(
+            "index",
+            {
+              req,
+              error: "An error has occurred. Please contact developers on Discord if this issue persists.",
+              player: playerUsername,
+              extra: await getExtra("index", favorites, cacheOnly),
+              promotion: weightedRandom(constants.PROMOTIONS),
+              fileHashes,
+              fileNameMap,
+              helper,
+              page: "index",
+            },
+            (err, html) => {
+              res.set("X-Debug-ID", `${debugId}`);
+              res.set("X-Process-Time", `${Date.now() - timeStarted}`);
+              res.send(html);
+            },
+          );
+        }
+
+        console.debug(`${debugId}: page successfully rendered. (${Date.now() - renderStart}ms)`);
         res.set("X-Debug-ID", `${debugId}`);
         res.set("X-Process-Time", `${Date.now() - timeStarted}`);
         res.send(html);
-      }
+      },
     );
   } catch (e) {
+    if (e instanceof SkyCryptError === false) {
+      const username = req.params.player;
+      const profile = req.params.profile;
+
+      helper.sendWebhookMessage(e, { username, profile });
+    }
+
     const favorites = parseFavorites(req.cookies.favorite);
 
     console.debug(`${debugId}: an error has occurred.`);
@@ -329,7 +370,7 @@ app.all("/stats/:player/:profile?", async (req, res, next) => {
         res.set("X-Debug-ID", `${debugId}`);
         res.set("X-Process-Time", `${Date.now() - timeStarted}`);
         res.send(html);
-      }
+      },
     );
 
     return false;
@@ -343,7 +384,7 @@ app.all("/api", async (req, res, next) => {
     (err, html) => {
       res.set("X-Cluster-ID", `${helper.getClusterId()}`);
       res.send(html);
-    }
+    },
   );
 });
 
@@ -362,7 +403,7 @@ app.all("/robots.txt", async (req, res, next) => {
   res
     .type("text")
     .send(
-      `User-agent: *\nDisallow: /item /cape /head /leather /potion /resources\nSitemap: https://sky.shiiyu.moe/sitemap.xml`
+      `User-agent: *\nDisallow: /item /cape /head /leather /potion /resources\nSitemap: https://sky.shiiyu.moe/sitemap.xml`,
     );
 });
 
@@ -477,7 +518,7 @@ app.all("/", async (req, res, next) => {
       res.set("X-Cluster-ID", `${helper.getClusterId()}`);
       res.set("X-Process-Time", `${Date.now() - timeStarted}`);
       res.send(html);
-    }
+    },
   );
 });
 
